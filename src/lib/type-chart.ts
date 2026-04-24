@@ -101,7 +101,10 @@ export const defensiveProfile = (defenders: string[]) =>
 export const offensiveCoverage = (attackTypes: string[]) =>
   POKEMON_TYPES.map((defender) => ({
     type: defender,
-    best: Math.max(...attackTypes.map((attack) => attackMultiplier(attack, [defender]))),
+    best:
+      attackTypes.length === 0
+        ? 0
+        : Math.max(...attackTypes.map((attack) => attackMultiplier(attack, [defender]))),
   }))
 
 export const TYPE_COLORS: Record<string, string> = {

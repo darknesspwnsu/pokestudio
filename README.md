@@ -19,6 +19,7 @@ npm run dev
 npm run lint
 npm run test
 npm run build
+npm run goldens
 ```
 
 ## Data
@@ -30,6 +31,14 @@ npm run generate:index
 ```
 
 Optional environment variables: `CONCURRENCY`, `LIMIT`, `OFFSET`, `SIZE`, and `SWATCHES`.
+
+Tier labels for random team pools are generated from Pokémon Showdown formats data:
+
+```bash
+npm run generate:tiers
+```
+
+Golden screenshots are written to `goldens/` from a production preview server. Run `npm run build`, start `npm run preview -- --host 127.0.0.1`, then run `npm run goldens`. If Playwright has not installed a browser yet, run `npx playwright install chromium` once.
 
 ## Attribution
 

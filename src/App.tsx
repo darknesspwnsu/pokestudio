@@ -12,7 +12,7 @@ import { toPng } from 'html-to-image'
 
 import { contrastColor, normalizeHex } from './lib/color'
 import { deriveEntries, loadPokemonIndex, searchEntries } from './lib/data'
-import { toCssVariables, toShareableTeam, toTeamJson, toTeamSummary } from './lib/exports'
+import { toCssVariables, toTeamJson, toTeamSummary } from './lib/exports'
 import { rankPaletteMatches } from './lib/match'
 import { formatDex } from './lib/pokemon'
 import { rankShinyDelta } from './lib/shiny'
@@ -29,6 +29,7 @@ import {
   teamOffense,
   teamPalette,
 } from './lib/team'
+import { filterRandomPool, getTierLabel, RANDOM_POOLS, type RandomPool } from './lib/tiers'
 import { defensiveProfile, POKEMON_TYPES, TYPE_COLORS } from './lib/type-chart'
 import type { DerivedEntry, PaletteMode, PokemonIndex, StudioTab, TeamSlot } from './lib/types'
 
@@ -66,18 +67,23 @@ const readInitialState = () => {
       paletteMode: 'normal' as PaletteMode,
       hexes: DEFAULT_HEXES,
       selected: 'pikachu',
+      pool: 'ou' as RandomPool,
     }
   }
   const params = new URLSearchParams(window.location.search)
+  const teamParam = params.get('team')
   const tab = TABS.some((item) => item.id === params.get('tool'))
     ? (params.get('tool') as StudioTab)
     : 'team'
   return {
     tab,
-    team: decodeTeam(params.get('team')),
+    team: params.has('team') ? decodeTeam(teamParam) : DEFAULT_TEAM,
     paletteMode: params.get('mode') === 'shiny' ? ('shiny' as const) : ('normal' as const),
     hexes: (params.get('hex')?.split(',') ?? DEFAULT_HEXES).slice(0, 5),
     selected: params.get('pokemon') ?? 'pikachu',
+    pool: RANDOM_POOLS.some((pool) => pool.id === params.get('pool'))
+      ? (params.get('pool') as RandomPool)
+      : 'ou',
   }
 }
 
@@ -174,13 +180,12 @@ function App() {
   const [tab, setTab] = useState<StudioTab>(initial.tab)
   const [paletteMode, setPaletteMode] = useState<PaletteMode>(initial.paletteMode)
   const [query, setQuery] = useState('')
-  const [teamSlots, setTeamSlots] = useState<TeamSlot[]>(
-    initial.team.length > 0 ? initial.team : DEFAULT_TEAM,
-  )
+  const [teamSlots, setTeamSlots] = useState<TeamSlot[]>(initial.team)
   const [selectedName, setSelectedName] = useState(initial.selected)
   const [hexValues, setHexValues] = useState(initial.hexes)
   const [shinyDirection, setShinyDirection] = useState<'most' | 'least'>('most')
   const [archetype, setArchetype] = useState('fast attacker')
+  const [randomPool, setRandomPool] = useState<RandomPool>(initial.pool)
   const [toast, setToast] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const posterRef = useRef<HTMLDivElement>(null)
@@ -230,9 +235,10 @@ function App() {
     params.set('team', encodeTeam(teamSlots))
     params.set('pokemon', selectedName)
     params.set('hex', hexValues.join(','))
+    params.set('pool', randomPool)
     const next = `${window.location.pathname}?${params.toString()}`
     window.history.replaceState(null, '', next)
-  }, [entries.length, hexValues, paletteMode, selectedName, tab, teamSlots])
+  }, [entries.length, hexValues, paletteMode, randomPool, selectedName, tab, teamSlots])
 
   const showToast = useCallback((message: string) => {
     setToast(message)
@@ -242,6 +248,10 @@ function App() {
   const addToTeam = (name: string, mode = paletteMode) => {
     if (teamSlots.some((slot) => slot.name === name)) return
     setTeamSlots((slots) => [...slots, { name, mode }].slice(0, MAX_TEAM_SIZE))
+  }
+
+  const removeFromTeam = (name: string) => {
+    setTeamSlots((slots) => slots.filter((slot) => slot.name !== name))
   }
 
   const exportPoster = async () => {
@@ -259,8 +269,15 @@ function App() {
   }
 
   const randomizeTeam = () => {
-    const shuffled = [...defaultEntries].sort(() => Math.random() - 0.5)
-    setTeamSlots(shuffled.slice(0, 6).map((entry) => ({ name: entry.name, mode: Math.random() > 0.82 ? 'shiny' : 'normal' })))
+    const pool = filterRandomPool(defaultEntries, randomPool)
+    const source = pool.length >= MAX_TEAM_SIZE ? pool : defaultEntries
+    const shuffled = [...source].sort(() => Math.random() - 0.5)
+    setTeamSlots(
+      shuffled.slice(0, MAX_TEAM_SIZE).map((entry) => ({
+        name: entry.name,
+        mode: Math.random() > 0.88 ? 'shiny' : 'normal',
+      })),
+    )
     startTransition(() => setTab('team'))
   }
 
@@ -337,7 +354,19 @@ function App() {
           ))}
         </nav>
         <div className="top-actions">
-          <button type="button" onClick={randomizeTeam}>Random</button>
+          <select
+            className="tier-select"
+            value={randomPool}
+            onChange={(event) => setRandomPool(event.target.value as RandomPool)}
+            aria-label="Random team pool"
+          >
+            {RANDOM_POOLS.map((pool) => (
+              <option key={pool.id} value={pool.id}>
+                {pool.label}
+              </option>
+            ))}
+          </select>
+          <button type="button" onClick={randomizeTeam}>Random team</button>
           <button type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
             {theme === 'dark' ? 'Light' : 'Dark'}
           </button>
@@ -386,9 +415,7 @@ function App() {
                       <button
                         type="button"
                         className="no-export"
-                        onClick={() =>
-                          setTeamSlots((slots) => slots.filter((slot) => slot.name !== entry.name))
-                        }
+                        onClick={() => removeFromTeam(entry.name)}
                       >
                         Remove
                       </button>
@@ -420,7 +447,11 @@ function App() {
               <div className="panel">
                 <h2>Patch suggestions</h2>
                 <div className="mini-grid">
-                  {suggestions.map(({ entry, score }) => (
+                  {suggestions.length === 0 ? (
+                    <p className="empty compact">
+                      Add team members first; suggestions appear when PokéStudio finds shared pressure points.
+                    </p>
+                  ) : suggestions.map(({ entry, score }) => (
                     <PokemonCard
                       key={entry.name}
                       entry={entry}
@@ -576,13 +607,71 @@ function App() {
             </button>
           )}
           <h2>Team notes</h2>
-          <pre>{toShareableTeam(teamSlots)}</pre>
+          <TeamChips
+            team={team}
+            selectedEntry={selectedEntry}
+            randomPool={randomPool}
+            onAddSelected={() => selectedEntry && addToTeam(selectedEntry.name)}
+            onRemove={removeFromTeam}
+            onRandomize={randomizeTeam}
+          />
           <h2>Selected roles</h2>
           <div className="chip-row">{selectedEntry?.archetypes.map((item) => <span className="soft-chip" key={item}>{item}</span>)}</div>
         </aside>
       </section>
       {toast && <div className="toast">{toast}</div>}
     </main>
+  )
+}
+
+const TeamChips = ({
+  team,
+  selectedEntry,
+  randomPool,
+  onAddSelected,
+  onRemove,
+  onRandomize,
+}: {
+  team: ReturnType<typeof resolveTeam>
+  selectedEntry?: DerivedEntry
+  randomPool: RandomPool
+  onAddSelected: () => void
+  onRemove: (name: string) => void
+  onRandomize: () => void
+}) => {
+  const selectedAlreadyAdded = selectedEntry
+    ? team.some(({ entry }) => entry.name === selectedEntry.name)
+    : true
+  const isFull = team.length >= MAX_TEAM_SIZE
+  const poolLabel = RANDOM_POOLS.find((pool) => pool.id === randomPool)?.label ?? 'OU'
+
+  return (
+    <div className="team-chip-panel">
+      <div className="team-chip-actions">
+        <button type="button" onClick={onAddSelected} disabled={!selectedEntry || selectedAlreadyAdded || isFull}>
+          Add selected
+        </button>
+        <button type="button" onClick={onRandomize}>Random {poolLabel}</button>
+      </div>
+      <div className="team-chip-list" aria-label="Current team">
+        {team.length === 0 ? (
+          <p className="empty compact">No team members yet. Add selected or generate a tier pool.</p>
+        ) : (
+          team.map(({ entry, mode }) => (
+            <div className="team-chip" key={entry.name}>
+              <img src={entry.images[mode]} alt="" loading="lazy" decoding="async" />
+              <span>
+                <b>{entry.displayName}</b>
+                <small>{getTierLabel(entry)} · {mode}</small>
+              </span>
+              <button type="button" aria-label={`Remove ${entry.displayName}`} onClick={() => onRemove(entry.name)}>
+                Remove
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -636,36 +725,69 @@ const CoveragePanel = ({
 }: {
   defense: ReturnType<typeof teamDefense>
   offense: ReturnType<typeof teamOffense>
-}) => (
-  <div className="panel span-2">
-    <p className="kicker">Type Matrix</p>
-    <h2>Team pressure map</h2>
-    <div className="matrix-columns">
-      <div>
-        <h3>Incoming threats</h3>
-        <div className="type-matrix">
-          {defense.map((row) => (
-            <div key={row.type} className={row.weak > row.resist + row.immune ? 'weak' : row.immune > 0 ? 'immune' : row.resist > row.weak ? 'resist' : 'neutral'}>
-              <span>{row.type}</span>
-              <b>{row.weak}W/{row.resist}R/{row.immune}I</b>
-            </div>
-          ))}
+}) => {
+  const pressureTypes = defense
+    .filter((row) => row.weak > row.resist + row.immune)
+    .map((row) => row.type)
+    .slice(0, 5)
+  const uncoveredTypes = offense
+    .filter((row) => row.best <= 1)
+    .map((row) => row.type)
+    .slice(0, 5)
+
+  return (
+    <div className="panel span-2 coverage-panel">
+      <div className="coverage-header">
+        <div>
+          <p className="kicker">Type Matrix</p>
+          <h2>Team pressure map</h2>
+        </div>
+        <div className="coverage-summary">
+          <span>Pressure: {pressureTypes.join(', ') || 'none'}</span>
+          <span>Needs hits: {uncoveredTypes.join(', ') || 'covered'}</span>
         </div>
       </div>
-      <div>
-        <h3>Offensive coverage</h3>
-        <div className="type-matrix">
-          {offense.map((row) => (
-            <div key={row.type} className={row.best > 1 ? 'resist' : row.best === 0 ? 'weak' : 'neutral'}>
-              <span>{row.type}</span>
-              <b>{row.best}x</b>
-            </div>
-          ))}
+      <div className="matrix-columns">
+        <div>
+          <h3>Incoming threats</h3>
+          <div className="pressure-grid">
+            {defense.map((row) => {
+              const state =
+                row.weak > row.resist + row.immune
+                  ? 'weak'
+                  : row.immune > 0
+                    ? 'immune'
+                    : row.resist > row.weak
+                      ? 'resist'
+                      : 'neutral'
+              return (
+                <div key={row.type} className={`pressure-card ${state}`}>
+                  <TypeChip type={row.type} />
+                  <strong>{row.weak}</strong>
+                  <small>weak</small>
+                  <strong>{row.resist + row.immune}</strong>
+                  <small>safe</small>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+        <div>
+          <h3>Offensive coverage</h3>
+          <div className="pressure-grid">
+            {offense.map((row) => (
+              <div key={row.type} className={`pressure-card ${row.best > 1 ? 'resist' : row.best === 0 ? 'weak' : 'neutral'}`}>
+                <TypeChip type={row.type} />
+                <strong>{row.best > 0 ? `${row.best}x` : '—'}</strong>
+                <small>best hit</small>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
+      <p className="microcopy">Type order: {POKEMON_TYPES.join(' / ')}</p>
     </div>
-    <p className="microcopy">Types: {POKEMON_TYPES.join(' / ')}</p>
-  </div>
-)
+  )
+}
 
 export default App

@@ -63,10 +63,18 @@ export const teamOffense = (team: ReturnType<typeof resolveTeam>) =>
   offensiveCoverage(Array.from(new Set(team.flatMap(({ entry }) => entry.types))))
 
 export const suggestTeamPatches = (team: ReturnType<typeof resolveTeam>, entries: DerivedEntry[]) => {
+  if (team.length === 0) {
+    return []
+  }
+
   const existing = new Set(team.map(({ entry }) => entry.name))
   const weakTypes = teamDefense(team)
     .filter((row) => row.weak > row.resist + row.immune)
     .map((row) => row.type)
+
+  if (weakTypes.length === 0) {
+    return []
+  }
 
   return entries
     .filter((entry) => entry.isDefault && !existing.has(entry.name))
