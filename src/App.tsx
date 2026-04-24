@@ -217,7 +217,12 @@ function App() {
 
   const exportPoster = async () => {
     if (!posterRef.current) return
-    const dataUrl = await toPng(posterRef.current, { cacheBust: true, pixelRatio: 2 })
+    const dataUrl = await toPng(posterRef.current, {
+      cacheBust: true,
+      pixelRatio: 2,
+      filter: (node) =>
+        !(node instanceof HTMLElement && node.classList.contains('no-export')),
+    })
     const link = document.createElement('a')
     link.href = dataUrl
     link.download = 'pokestudio-team.png'
@@ -324,7 +329,15 @@ function App() {
                 <div className="team-strip">
                   {team.map(({ entry, mode }) => (
                     <article key={entry.name} className="team-member">
-                      <button type="button" onClick={() => setTeamSlots((slots) => slots.filter((slot) => slot.name !== entry.name))}>Remove</button>
+                      <button
+                        type="button"
+                        className="no-export"
+                        onClick={() =>
+                          setTeamSlots((slots) => slots.filter((slot) => slot.name !== entry.name))
+                        }
+                      >
+                        Remove
+                      </button>
                       <img src={entry.images[mode]} alt={entry.displayName} />
                       <h3>{entry.displayName}</h3>
                       <div className="chip-row">{entry.types.map((type) => <TypeChip key={type} type={type} />)}</div>

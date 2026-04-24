@@ -278,13 +278,14 @@ pre {
   border: 1px solid var(--stroke);
   padding: 10px;
   display: grid;
+  grid-template-rows: auto 150px auto auto;
   align-content: start;
   gap: 8px;
 }
 
 .team-member img {
   width: 100%;
-  aspect-ratio: 1;
+  height: 150px;
   object-fit: contain;
   filter: drop-shadow(0 20px 28px rgba(0, 0, 0, 0.28));
 }
@@ -297,7 +298,9 @@ pre {
 
 .team-member h3 {
   min-height: 38px;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: normal;
+  line-height: 1.1;
 }
 
 .pokemon-card {
