@@ -1,5 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
+import {
+  memo,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from 'react'
 import { toPng } from 'html-to-image'
 
 import { contrastColor, normalizeHex } from './lib/color'
@@ -77,7 +85,7 @@ const copyText = async (value: string) => {
   await navigator.clipboard?.writeText(value)
 }
 
-const SearchBox = ({
+const SearchBox = memo(function SearchBox({
   entries,
   value,
   onChange,
@@ -87,7 +95,8 @@ const SearchBox = ({
   value: string
   onChange: (name: string) => void
   label: string
-}) => (
+}) {
+  return (
   <label className="field">
     <span>{label}</span>
     <input
@@ -97,7 +106,7 @@ const SearchBox = ({
       placeholder="Search name, dex, type, form..."
     />
     <datalist id="pokemon-options">
-      {entries.slice(0, 900).map((entry) => (
+      {entries.slice(0, 120).map((entry) => (
         <option key={entry.name} value={entry.name}>
           {entry.displayName}
         </option>
@@ -105,25 +114,31 @@ const SearchBox = ({
     </datalist>
   </label>
 )
+})
 
-const TypeChip = ({ type }: { type: string }) => (
+const TypeChip = memo(function TypeChip({ type }: { type: string }) {
+  const color = TYPE_COLORS[type] ?? '#64748B'
+  return (
   <span
     className="type-chip"
-    style={{ backgroundColor: TYPE_COLORS[type] ?? '#64748B', color: contrastColor(TYPE_COLORS[type] ?? '#64748B') }}
+    style={{ backgroundColor: color, color: contrastColor(color) }}
   >
     {type}
   </span>
 )
+})
 
-const Swatches = ({ colors }: { colors: { hex: string }[] }) => (
+const Swatches = memo(function Swatches({ colors }: { colors: { hex: string }[] }) {
+  return (
   <div className="swatches">
     {colors.map((swatch, index) => (
       <span key={`${swatch.hex}-${index}`} style={{ backgroundColor: swatch.hex }} title={swatch.hex} />
     ))}
   </div>
 )
+})
 
-const PokemonCard = ({
+const PokemonCard = memo(function PokemonCard({
   entry,
   mode,
   action,
@@ -131,10 +146,11 @@ const PokemonCard = ({
   entry: DerivedEntry
   mode: PaletteMode
   action?: React.ReactNode
-}) => (
+}) {
+  return (
   <article className="pokemon-card">
     <div className="card-art">
-      <img src={entry.images[mode]} alt={entry.displayName} loading="lazy" />
+      <img src={entry.images[mode]} alt={entry.displayName} loading="lazy" decoding="async" />
     </div>
     <div>
       <p className="kicker">#{formatDex(entry.speciesId)} · Gen {entry.generation}</p>
@@ -145,6 +161,7 @@ const PokemonCard = ({
     </div>
   </article>
 )
+})
 
 function App() {
   const initial = useMemo(() => readInitialState(), [])
@@ -165,6 +182,7 @@ function App() {
   const [shinyDirection, setShinyDirection] = useState<'most' | 'least'>('most')
   const [archetype, setArchetype] = useState('fast attacker')
   const [toast, setToast] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
   const posterRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -187,11 +205,22 @@ function App() {
   }, [])
 
   const entries = useMemo(() => (index ? deriveEntries(index) : []), [index])
-  const visibleEntries = useMemo(() => searchEntries(entries, query).slice(0, 80), [entries, query])
+  const deferredQuery = useDeferredValue(query)
+  const visibleEntries = useMemo(
+    () => searchEntries(entries, deferredQuery).slice(0, 80),
+    [entries, deferredQuery],
+  )
+  const defaultEntries = useMemo(() => entries.filter((entry) => entry.isDefault), [entries])
   const entryMap = useMemo(() => new Map(entries.map((entry) => [entry.name, entry])), [entries])
   const selectedEntry = entryMap.get(selectedName) ?? entries[0]
   const team = useMemo(() => resolveTeam(teamSlots, entries), [teamSlots, entries])
-  const accent = team.length > 0 ? teamAccent(team) : selectedEntry?.palettes[paletteMode].swatches[0]?.hex ?? '#38BDF8'
+  const accent = useMemo(
+    () =>
+      team.length > 0
+        ? teamAccent(team)
+        : selectedEntry?.palettes[paletteMode].swatches[0]?.hex ?? '#38BDF8',
+    [paletteMode, selectedEntry, team],
+  )
 
   useEffect(() => {
     if (entries.length === 0) return
@@ -230,10 +259,46 @@ function App() {
   }
 
   const randomizeTeam = () => {
-    const defaults = entries.filter((entry) => entry.isDefault)
-    const shuffled = [...defaults].sort(() => Math.random() - 0.5)
+    const shuffled = [...defaultEntries].sort(() => Math.random() - 0.5)
     setTeamSlots(shuffled.slice(0, 6).map((entry) => ({ name: entry.name, mode: Math.random() > 0.82 ? 'shiny' : 'normal' })))
-    setTab('team')
+    startTransition(() => setTab('team'))
+  }
+
+  const stats = useMemo(() => averageStats(team), [team])
+  const defense = useMemo(() => teamDefense(team), [team])
+  const offense = useMemo(() => teamOffense(team), [team])
+  const suggestions = useMemo(
+    () => (tab === 'team' ? suggestTeamPatches(team, entries) : []),
+    [entries, tab, team],
+  )
+  const paletteMatches = useMemo(
+    () => (tab === 'palette' ? rankPaletteMatches(entries, hexValues, paletteMode).slice(0, 18) : []),
+    [entries, hexValues, paletteMode, tab],
+  )
+  const shinyRows = useMemo(
+    () => (tab === 'shiny' ? rankShinyDelta(visibleEntries, shinyDirection).slice(0, 24) : []),
+    [shinyDirection, tab, visibleEntries],
+  )
+  const statRows = useMemo(
+    () =>
+      tab === 'stats'
+        ? visibleEntries
+            .filter((entry) => entry.archetypes.includes(archetype))
+            .sort((a, b) => b.baseStats.total - a.baseStats.total)
+            .slice(0, 18)
+        : [],
+    [archetype, tab, visibleEntries],
+  )
+  const similarRows = useMemo(
+    () => (tab === 'stats' && selectedEntry ? rankSimilar(entries, selectedEntry).slice(0, 8) : []),
+    [entries, selectedEntry, tab],
+  )
+  const selectedDefense = useMemo(
+    () => (selectedEntry ? defensiveProfile(selectedEntry.types) : []),
+    [selectedEntry],
+  )
+  const setActiveTab = (nextTab: StudioTab) => {
+    startTransition(() => setTab(nextTab))
   }
 
   if (error) {
@@ -243,18 +308,6 @@ function App() {
   if (!index || entries.length === 0) {
     return <main className="center-state">Booting PokéStudio data core...</main>
   }
-
-  const stats = averageStats(team)
-  const defense = teamDefense(team)
-  const offense = teamOffense(team)
-  const suggestions = suggestTeamPatches(team, entries)
-  const paletteMatches = rankPaletteMatches(entries, hexValues, paletteMode).slice(0, 18)
-  const shinyRows = rankShinyDelta(visibleEntries, shinyDirection).slice(0, 24)
-  const statRows = visibleEntries
-    .filter((entry) => entry.archetypes.includes(archetype))
-    .sort((a, b) => b.baseStats.total - a.baseStats.total)
-    .slice(0, 18)
-  const similarRows = selectedEntry ? rankSimilar(entries, selectedEntry).slice(0, 8) : []
 
   return (
     <main
@@ -275,7 +328,8 @@ function App() {
               key={item.id}
               className={tab === item.id ? 'active' : ''}
               type="button"
-              onClick={() => setTab(item.id)}
+              onClick={() => setActiveTab(item.id)}
+              aria-busy={isPending}
             >
               <strong>{item.label}</strong>
               <span>{item.hint}</span>
@@ -292,7 +346,7 @@ function App() {
 
       <section className="layout">
         <aside className="rail panel">
-          <SearchBox entries={entries} value={query} onChange={setQuery} label="Command search" />
+          <SearchBox entries={visibleEntries} value={query} onChange={setQuery} label="Command search" />
           <label className="field">
             <span>Palette mode</span>
             <select value={paletteMode} onChange={(event) => setPaletteMode(event.target.value as PaletteMode)}>
@@ -308,7 +362,7 @@ function App() {
                 className={selectedName === entry.name ? 'search-row active' : 'search-row'}
                 onClick={() => setSelectedName(entry.name)}
               >
-                <img src={entry.images[paletteMode]} alt="" />
+                <img src={entry.images[paletteMode]} alt="" loading="lazy" decoding="async" />
                 <span>{entry.displayName}</span>
               </button>
             ))}
@@ -317,7 +371,7 @@ function App() {
 
         <section className="workspace">
           {tab === 'team' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="tool-grid">
+            <div className="tool-grid tool-panel">
               <div className="panel poster" ref={posterRef}>
                 <div className="poster-header">
                   <div>
@@ -338,7 +392,7 @@ function App() {
                       >
                         Remove
                       </button>
-                      <img src={entry.images[mode]} alt={entry.displayName} />
+                      <img src={entry.images[mode]} alt={entry.displayName} loading="eager" decoding="async" />
                       <h3>{entry.displayName}</h3>
                       <div className="chip-row">{entry.types.map((type) => <TypeChip key={type} type={type} />)}</div>
                     </article>
@@ -376,11 +430,11 @@ function App() {
                   ))}
                 </div>
               </div>
-            </motion.div>
+            </div>
           )}
 
           {tab === 'palette' && (
-            <div className="tool-grid">
+            <div className="tool-grid tool-panel">
               <div className="panel">
                 <p className="kicker">Palette Matcher</p>
                 <h2>Find Pokémon for a color system</h2>
@@ -418,7 +472,7 @@ function App() {
           )}
 
           {tab === 'shiny' && (
-            <div className="tool-grid">
+            <div className="tool-grid tool-panel">
               <div className="panel">
                 <p className="kicker">Shiny Delta</p>
                 <h2>Rank color shifts</h2>
@@ -430,8 +484,8 @@ function App() {
               <div className="panel span-2 shiny-list">
                 {shinyRows.map((entry) => (
                   <article key={entry.name} className="shiny-row">
-                    <img src={entry.images.normal} alt={`${entry.displayName} normal`} />
-                    <img src={entry.images.shiny} alt={`${entry.displayName} shiny`} />
+                    <img src={entry.images.normal} alt={`${entry.displayName} normal`} loading="lazy" decoding="async" />
+                    <img src={entry.images.shiny} alt={`${entry.displayName} shiny`} loading="lazy" decoding="async" />
                     <div>
                       <h3>{entry.displayName}</h3>
                       <p>Delta score {entry.shinyDelta}</p>
@@ -445,14 +499,14 @@ function App() {
           )}
 
           {tab === 'types' && (
-            <div className="tool-grid">
+            <div className="tool-grid tool-panel">
               <CoveragePanel defense={defense} offense={offense} />
               <div className="panel span-2">
                 <p className="kicker">Selected Pokémon</p>
                 {selectedEntry && (
                   <>
                     <PokemonCard entry={selectedEntry} mode={paletteMode} />
-                    <TypeMatrix rows={defensiveProfile(selectedEntry.types)} valueKey="multiplier" />
+                    <TypeMatrix rows={selectedDefense} valueKey="multiplier" />
                   </>
                 )}
               </div>
@@ -460,7 +514,7 @@ function App() {
           )}
 
           {tab === 'stats' && (
-            <div className="tool-grid">
+            <div className="tool-grid tool-panel">
               <div className="panel">
                 <p className="kicker">Stat Finder</p>
                 <h2>Search by stat shape</h2>

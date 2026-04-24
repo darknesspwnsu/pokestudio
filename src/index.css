@@ -37,6 +37,7 @@ body,
 
 body {
   margin: 0;
+  text-rendering: optimizeSpeed;
   background:
     radial-gradient(circle at 16% 14%, color-mix(in srgb, var(--accent, #38bdf8) 35%, transparent), transparent 36rem),
     radial-gradient(circle at 88% 12%, rgba(250, 204, 21, 0.22), transparent 34rem),
@@ -71,12 +72,13 @@ button {
   padding: 8px 12px;
   cursor: pointer;
   font-weight: 800;
+  transition: border-color 120ms ease, background-color 120ms ease, transform 120ms ease;
 }
 
 button:hover,
 button.active {
   border-color: var(--accent, #38bdf8);
-  box-shadow: inset 0 -2px 0 var(--accent, #38bdf8);
+  transform: translateY(-1px);
 }
 
 button:disabled {
@@ -158,6 +160,7 @@ pre {
   text-align: left;
   display: grid;
   gap: 3px;
+  contain: layout paint;
 }
 
 .tabs span,
@@ -190,9 +193,9 @@ pre {
 .panel {
   background: var(--panel);
   border: 1px solid var(--stroke);
-  box-shadow: var(--shadow);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
   padding: 16px;
-  backdrop-filter: blur(18px);
+  contain: layout paint style;
 }
 
 .rail,
@@ -201,6 +204,8 @@ pre {
   top: 16px;
   max-height: calc(100vh - 32px);
   overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .field {
@@ -239,6 +244,21 @@ pre {
 
 .workspace {
   min-width: 0;
+}
+
+.tool-panel {
+  animation: tool-fade 120ms ease-out;
+}
+
+@keyframes tool-fade {
+  from {
+    opacity: 0.75;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .tool-grid {
@@ -281,13 +301,14 @@ pre {
   grid-template-rows: auto 150px auto auto;
   align-content: start;
   gap: 8px;
+  contain: layout paint;
 }
 
 .team-member img {
   width: 100%;
   height: 150px;
   object-fit: contain;
-  filter: drop-shadow(0 20px 28px rgba(0, 0, 0, 0.28));
+  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.24));
 }
 
 .team-member button {
@@ -311,6 +332,9 @@ pre {
   border: 1px solid var(--stroke);
   padding: 12px;
   min-width: 0;
+  contain: layout paint style;
+  content-visibility: auto;
+  contain-intrinsic-size: 120px;
 }
 
 .card-art {
@@ -324,6 +348,7 @@ pre {
   width: 94px;
   height: 94px;
   object-fit: contain;
+  transform: translateZ(0);
 }
 
 .chip-row {
@@ -384,7 +409,6 @@ pre {
   height: 9px;
   background: var(--accent, #38bdf8);
   display: block;
-  box-shadow: 0 0 24px color-mix(in srgb, var(--accent, #38bdf8) 40%, transparent);
 }
 
 .type-matrix {
@@ -456,6 +480,9 @@ pre {
   background: rgba(0, 0, 0, 0.18);
   border: 1px solid var(--stroke);
   padding: 10px;
+  contain: layout paint style;
+  content-visibility: auto;
+  contain-intrinsic-size: 108px;
 }
 
 .shiny-row img {
@@ -486,7 +513,7 @@ pre {
   padding: 12px 14px;
   border: 1px solid var(--stroke);
   background: var(--panel-strong);
-  box-shadow: var(--shadow);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
   z-index: 20;
   font-size: 14px;
 }
@@ -504,12 +531,24 @@ pre {
 
   .tabs {
     overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-gutter: stable;
   }
 
   .rail,
   .inspector {
     position: static;
     max-height: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
   }
 }
 

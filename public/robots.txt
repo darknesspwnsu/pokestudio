@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://shivadeviah.github.io/pokestudio/sitemap.xml
+Sitemap: https://darknesspwnsu.github.io/pokestudio/sitemap.xml
