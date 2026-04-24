@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://shivadeviah.github.io/pokestudio/sitemap.xml
