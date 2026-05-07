@@ -91,6 +91,23 @@ const copyText = async (value: string) => {
   await navigator.clipboard?.writeText(value)
 }
 
+const readStoredTheme = () => {
+  if (typeof window === 'undefined') return 'dark'
+  try {
+    return window.localStorage?.getItem?.('pokestudio-theme') === 'light' ? 'light' : 'dark'
+  } catch {
+    return 'dark'
+  }
+}
+
+const writeStoredTheme = (theme: 'dark' | 'light') => {
+  try {
+    window.localStorage?.setItem?.('pokestudio-theme', theme)
+  } catch {
+    // Storage can be unavailable in private browsing or test environments.
+  }
+}
+
 const SearchBox = memo(function SearchBox({
   entries,
   value,
@@ -173,10 +190,7 @@ function App() {
   const initial = useMemo(() => readInitialState(), [])
   const [index, setIndex] = useState<PokemonIndex | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    const stored = localStorage.getItem('pokestudio-theme')
-    return stored === 'light' ? 'light' : 'dark'
-  })
+  const [theme, setTheme] = useState<'dark' | 'light'>(readStoredTheme)
   const [tab, setTab] = useState<StudioTab>(initial.tab)
   const [paletteMode, setPaletteMode] = useState<PaletteMode>(initial.paletteMode)
   const [query, setQuery] = useState('')
@@ -192,7 +206,7 @@ function App() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
-    localStorage.setItem('pokestudio-theme', theme)
+    writeStoredTheme(theme)
   }, [theme])
 
   useEffect(() => {
@@ -347,6 +361,7 @@ function App() {
               type="button"
               onClick={() => setActiveTab(item.id)}
               aria-busy={isPending}
+              title={`Open ${item.label}: ${item.hint}.`}
             >
               <strong>{item.label}</strong>
               <span>{item.hint}</span>
@@ -359,6 +374,7 @@ function App() {
             value={randomPool}
             onChange={(event) => setRandomPool(event.target.value as RandomPool)}
             aria-label="Random team pool"
+            title="Choose which competitive tier powers random team generation."
           >
             {RANDOM_POOLS.map((pool) => (
               <option key={pool.id} value={pool.id}>
@@ -366,8 +382,8 @@ function App() {
               </option>
             ))}
           </select>
-          <button type="button" onClick={randomizeTeam}>Random team</button>
-          <button type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+          <button type="button" onClick={randomizeTeam} title="Generate a full team from the selected tier pool.">Random team</button>
+          <button type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Switch between light and dark color themes.">
             {theme === 'dark' ? 'Light' : 'Dark'}
           </button>
         </div>
@@ -378,7 +394,7 @@ function App() {
           <SearchBox entries={visibleEntries} value={query} onChange={setQuery} label="Command search" />
           <label className="field">
             <span>Palette mode</span>
-            <select value={paletteMode} onChange={(event) => setPaletteMode(event.target.value as PaletteMode)}>
+            <select value={paletteMode} onChange={(event) => setPaletteMode(event.target.value as PaletteMode)} title="Choose normal or shiny artwork for previews and palette matching.">
               <option value="normal">Normal artwork</option>
               <option value="shiny">Shiny artwork</option>
             </select>
@@ -390,6 +406,7 @@ function App() {
                 type="button"
                 className={selectedName === entry.name ? 'search-row active' : 'search-row'}
                 onClick={() => setSelectedName(entry.name)}
+                title={`Select ${entry.displayName} for inspection and team actions.`}
               >
                 <img src={entry.images[paletteMode]} alt="" loading="lazy" decoding="async" />
                 <span>{entry.displayName}</span>
@@ -416,6 +433,7 @@ function App() {
                         type="button"
                         className="no-export"
                         onClick={() => removeFromTeam(entry.name)}
+                        title={`Remove ${entry.displayName} from this team.`}
                       >
                         Remove
                       </button>
@@ -435,7 +453,7 @@ function App() {
                   <PokemonCard
                     entry={selectedEntry}
                     mode={paletteMode}
-                    action={<button type="button" onClick={() => addToTeam(selectedEntry.name)}>Add to team</button>}
+                    action={<button type="button" onClick={() => addToTeam(selectedEntry.name)} title={`Add ${selectedEntry.displayName} to the current team.`}>Add to team</button>}
                   />
                 )}
                 <h2>Average stats</h2>
@@ -456,7 +474,7 @@ function App() {
                       key={entry.name}
                       entry={entry}
                       mode="normal"
-                      action={<button type="button" onClick={() => addToTeam(entry.name)}>Add · {score.toFixed(1)}</button>}
+                      action={<button type="button" onClick={() => addToTeam(entry.name)} title={`Add ${entry.displayName}; score reflects how well it patches team weaknesses.`}>Add · {score.toFixed(1)}</button>}
                     />
                   ))}
                 </div>
@@ -474,6 +492,7 @@ function App() {
                     <input
                       key={index}
                       value={value}
+                      title="Enter a HEX color to find Pokémon palettes that match it."
                       onChange={(event) =>
                         setHexValues((values) =>
                           values.map((item, itemIndex) => (itemIndex === index ? event.target.value : item)),
@@ -483,7 +502,7 @@ function App() {
                     />
                   ))}
                 </div>
-                <button type="button" disabled={hexValues.length >= 5} onClick={() => setHexValues((values) => [...values, '#FFFFFF'])}>
+                <button type="button" disabled={hexValues.length >= 5} onClick={() => setHexValues((values) => [...values, '#FFFFFF'])} title="Add another HEX color slot, up to five total.">
                   Add HEX
                 </button>
               </div>
@@ -494,7 +513,7 @@ function App() {
                       key={entry.name}
                       entry={entry}
                       mode={paletteMode}
-                      action={<button type="button" onClick={() => addToTeam(entry.name)}>Match {score}% · Add</button>}
+                      action={<button type="button" onClick={() => addToTeam(entry.name)} title={`Add ${entry.displayName}; ${score}% palette match to your HEX colors.`}>Match {score}% · Add</button>}
                     />
                   ))}
                 </div>
@@ -507,7 +526,7 @@ function App() {
               <div className="panel">
                 <p className="kicker">Shiny Delta</p>
                 <h2>Rank color shifts</h2>
-                <select value={shinyDirection} onChange={(event) => setShinyDirection(event.target.value as 'most' | 'least')}>
+                <select value={shinyDirection} onChange={(event) => setShinyDirection(event.target.value as 'most' | 'least')} title="Choose whether to rank dramatic or subtle shiny palette changes.">
                   <option value="most">Most changed</option>
                   <option value="least">Barely changed</option>
                 </select>
@@ -522,7 +541,7 @@ function App() {
                       <p>Delta score {entry.shinyDelta}</p>
                       <Swatches colors={[...entry.palettes.normal.swatches, ...entry.palettes.shiny.swatches]} />
                     </div>
-                    <button type="button" onClick={() => setSelectedName(entry.name)}>Inspect</button>
+                    <button type="button" onClick={() => setSelectedName(entry.name)} title={`Inspect ${entry.displayName} in the side panels.`}>Inspect</button>
                   </article>
                 ))}
               </div>
@@ -549,7 +568,7 @@ function App() {
               <div className="panel">
                 <p className="kicker">Stat Finder</p>
                 <h2>Search by stat shape</h2>
-                <select value={archetype} onChange={(event) => setArchetype(event.target.value)}>
+                <select value={archetype} onChange={(event) => setArchetype(event.target.value)} title="Filter Pokémon by a broad stat role.">
                   {ARCHETYPES.map((item) => <option key={item}>{item}</option>)}
                 </select>
                 {selectedEntry && (
@@ -567,7 +586,7 @@ function App() {
                       key={entry.name}
                       entry={entry}
                       mode={paletteMode}
-                      action={<button type="button" onClick={() => addToTeam(entry.name)}>Add · {entry.baseStats.total}</button>}
+                      action={<button type="button" onClick={() => addToTeam(entry.name)} title={`Add ${entry.displayName}; total base stats ${entry.baseStats.total}.`}>Add · {entry.baseStats.total}</button>}
                     />
                   ))}
                 </div>
@@ -580,7 +599,7 @@ function App() {
                       key={entry.name}
                       entry={entry}
                       mode={paletteMode}
-                      action={<button type="button" onClick={() => addToTeam(entry.name)}>Similarity {Math.round(score * 100)}%</button>}
+                      action={<button type="button" onClick={() => addToTeam(entry.name)} title={`Add ${entry.displayName}; stat profile is ${Math.round(score * 100)}% similar.`}>Similarity {Math.round(score * 100)}%</button>}
                     />
                   ))}
                 </div>
@@ -591,18 +610,18 @@ function App() {
 
         <aside className="inspector panel">
           <h2>Output bay</h2>
-          <button type="button" onClick={exportPoster}>Export team PNG</button>
-          <button type="button" onClick={() => copyText(window.location.href).then(() => showToast('Copied share URL'))}>
+          <button type="button" onClick={exportPoster} title="Download the current team board as a PNG image.">Export team PNG</button>
+          <button type="button" onClick={() => copyText(window.location.href).then(() => showToast('Copied share URL'))} title="Copy a URL that preserves the current tool, team, and filters.">
             Copy share URL
           </button>
-          <button type="button" onClick={() => copyText(toTeamJson(team)).then(() => showToast('Copied team JSON'))}>
+          <button type="button" onClick={() => copyText(toTeamJson(team)).then(() => showToast('Copied team JSON'))} title="Copy the current team as structured JSON.">
             Copy team JSON
           </button>
-          <button type="button" onClick={() => copyText(toTeamSummary(team)).then(() => showToast('Copied summary'))}>
+          <button type="button" onClick={() => copyText(toTeamSummary(team)).then(() => showToast('Copied summary'))} title="Copy a readable summary of the current team.">
             Copy team summary
           </button>
           {selectedEntry && (
-            <button type="button" onClick={() => copyText(toCssVariables(selectedEntry, paletteMode)).then(() => showToast('Copied CSS'))}>
+            <button type="button" onClick={() => copyText(toCssVariables(selectedEntry, paletteMode)).then(() => showToast('Copied CSS'))} title={`Copy CSS variables derived from ${selectedEntry.displayName}.`}>
               Copy selected CSS
             </button>
           )}
@@ -648,10 +667,10 @@ const TeamChips = ({
   return (
     <div className="team-chip-panel">
       <div className="team-chip-actions">
-        <button type="button" onClick={onAddSelected} disabled={!selectedEntry || selectedAlreadyAdded || isFull}>
+        <button type="button" onClick={onAddSelected} disabled={!selectedEntry || selectedAlreadyAdded || isFull} title="Add the selected Pokémon to your team if there is room.">
           Add selected
         </button>
-        <button type="button" onClick={onRandomize}>Random {poolLabel}</button>
+        <button type="button" onClick={onRandomize} title={`Generate a new team from the ${poolLabel} pool.`}>Random {poolLabel}</button>
       </div>
       <div className="team-chip-list" aria-label="Current team">
         {team.length === 0 ? (
@@ -664,7 +683,7 @@ const TeamChips = ({
                 <b>{entry.displayName}</b>
                 <small>{getTierLabel(entry)} · {mode}</small>
               </span>
-              <button type="button" aria-label={`Remove ${entry.displayName}`} onClick={() => onRemove(entry.name)}>
+              <button type="button" aria-label={`Remove ${entry.displayName}`} onClick={() => onRemove(entry.name)} title={`Remove ${entry.displayName} from the team.`}>
                 Remove
               </button>
             </div>
