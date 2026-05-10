@@ -58,6 +58,12 @@ const ARCHETYPES = [
   'physical attacker',
   'mixed attacker',
 ]
+const SEARCH_RESULT_LIMIT = 56
+const SEARCH_OPTION_LIMIT = 80
+const SIDEBAR_RESULT_LIMIT = 14
+const PALETTE_MATCH_LIMIT = 12
+const SHINY_ROW_LIMIT = 18
+const STAT_ROW_LIMIT = 14
 
 const readInitialState = () => {
   if (typeof window === 'undefined') {
@@ -129,7 +135,7 @@ const SearchBox = memo(function SearchBox({
       placeholder="Search name, dex, type, form..."
     />
     <datalist id="pokemon-options">
-      {entries.slice(0, 120).map((entry) => (
+      {entries.slice(0, SEARCH_OPTION_LIMIT).map((entry) => (
         <option key={entry.name} value={entry.name}>
           {entry.displayName}
         </option>
@@ -226,7 +232,7 @@ function App() {
   const entries = useMemo(() => (index ? deriveEntries(index) : []), [index])
   const deferredQuery = useDeferredValue(query)
   const visibleEntries = useMemo(
-    () => searchEntries(entries, deferredQuery).slice(0, 80),
+    () => searchEntries(entries, deferredQuery).slice(0, SEARCH_RESULT_LIMIT),
     [entries, deferredQuery],
   )
   const defaultEntries = useMemo(() => entries.filter((entry) => entry.isDefault), [entries])
@@ -303,11 +309,11 @@ function App() {
     [entries, tab, team],
   )
   const paletteMatches = useMemo(
-    () => (tab === 'palette' ? rankPaletteMatches(entries, hexValues, paletteMode).slice(0, 18) : []),
+    () => (tab === 'palette' ? rankPaletteMatches(entries, hexValues, paletteMode).slice(0, PALETTE_MATCH_LIMIT) : []),
     [entries, hexValues, paletteMode, tab],
   )
   const shinyRows = useMemo(
-    () => (tab === 'shiny' ? rankShinyDelta(visibleEntries, shinyDirection).slice(0, 24) : []),
+    () => (tab === 'shiny' ? rankShinyDelta(visibleEntries, shinyDirection).slice(0, SHINY_ROW_LIMIT) : []),
     [shinyDirection, tab, visibleEntries],
   )
   const statRows = useMemo(
@@ -316,7 +322,7 @@ function App() {
         ? visibleEntries
             .filter((entry) => entry.archetypes.includes(archetype))
             .sort((a, b) => b.baseStats.total - a.baseStats.total)
-            .slice(0, 18)
+            .slice(0, STAT_ROW_LIMIT)
         : [],
     [archetype, tab, visibleEntries],
   )
@@ -400,7 +406,7 @@ function App() {
             </select>
           </label>
           <div className="result-list">
-            {visibleEntries.slice(0, 18).map((entry) => (
+            {visibleEntries.slice(0, SIDEBAR_RESULT_LIMIT).map((entry) => (
               <button
                 key={entry.name}
                 type="button"

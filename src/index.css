@@ -2,7 +2,7 @@
   color-scheme: dark;
   --bg: #071820;
   --bg-2: #0d2730;
-  --surface: rgba(16, 38, 46, 0.86);
+  --surface: #10262e;
   --surface-2: rgba(22, 52, 61, 0.94);
   --surface-3: rgba(30, 69, 78, 0.98);
   --ink: #f4fbf8;
@@ -14,9 +14,9 @@
   --danger: #ff6b6b;
   --success: #81c784;
   --info: #64b5f6;
-  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.22), 0 1px 2px rgba(0, 0, 0, 0.18);
-  --shadow-2: 0 12px 34px rgba(0, 0, 0, 0.28), 0 3px 8px rgba(0, 0, 0, 0.22);
-  --shadow-3: 0 24px 70px rgba(0, 0, 0, 0.34);
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.22);
+  --shadow-2: 0 8px 22px rgba(0, 0, 0, 0.22);
+  --shadow-3: 0 16px 42px rgba(0, 0, 0, 0.28);
   --radius-sm: 12px;
   --radius-md: 18px;
   --radius-lg: 28px;
@@ -29,7 +29,7 @@
   color-scheme: light;
   --bg: #f3f7ef;
   --bg-2: #dfeee8;
-  --surface: rgba(255, 255, 255, 0.86);
+  --surface: #ffffff;
   --surface-2: rgba(255, 255, 255, 0.96);
   --surface-3: #ffffff;
   --ink: #17231f;
@@ -41,9 +41,9 @@
   --danger: #d64545;
   --success: #2e7d4f;
   --info: #1565c0;
-  --shadow-1: 0 2px 8px rgba(36, 66, 55, 0.11), 0 1px 2px rgba(36, 66, 55, 0.09);
-  --shadow-2: 0 14px 36px rgba(36, 66, 55, 0.16), 0 3px 8px rgba(36, 66, 55, 0.08);
-  --shadow-3: 0 28px 70px rgba(36, 66, 55, 0.2);
+  --shadow-1: 0 1px 3px rgba(36, 66, 55, 0.12);
+  --shadow-2: 0 8px 22px rgba(36, 66, 55, 0.14);
+  --shadow-3: 0 16px 42px rgba(36, 66, 55, 0.18);
 }
 
 * {
@@ -59,11 +59,12 @@ body,
 body {
   margin: 0;
   min-width: 320px;
-  text-rendering: optimizeLegibility;
+  text-rendering: optimizeSpeed;
+  font-weight: 400;
+  line-height: 1.5;
   background:
-    radial-gradient(circle at 14% 10%, color-mix(in srgb, var(--accent, var(--primary)) 26%, transparent), transparent 34rem),
-    radial-gradient(circle at 85% 6%, color-mix(in srgb, var(--secondary) 26%, transparent), transparent 32rem),
-    radial-gradient(circle at 44% 92%, rgba(100, 181, 246, 0.18), transparent 38rem),
+    radial-gradient(circle at 14% 10%, color-mix(in srgb, var(--accent, var(--primary)) 18%, transparent), transparent 30rem),
+    radial-gradient(circle at 85% 6%, color-mix(in srgb, var(--secondary) 16%, transparent), transparent 28rem),
     linear-gradient(140deg, var(--bg), var(--bg-2));
 }
 
@@ -72,12 +73,9 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image:
-    radial-gradient(circle, color-mix(in srgb, var(--ink) 11%, transparent) 1px, transparent 1.5px),
-    linear-gradient(135deg, transparent 0 48%, color-mix(in srgb, var(--ink) 4%, transparent) 49% 51%, transparent 52%);
-  background-size: 28px 28px, 180px 180px;
-  opacity: 0.28;
-  mask-image: radial-gradient(circle at center, black, transparent 82%);
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1.5px);
+  background-size: 32px 32px;
+  opacity: 0.16;
 }
 
 button,
@@ -100,23 +98,22 @@ button {
   color: var(--ink);
   padding: 9px 14px;
   cursor: pointer;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.01em;
   box-shadow: var(--shadow-1);
-  transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease, background 150ms ease, opacity 150ms ease;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease, opacity 120ms ease;
 }
 
 button:hover,
 button.active {
   border-color: var(--accent, var(--primary));
-  box-shadow: var(--shadow-2);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 button:active {
   transform: translateY(0);
-  box-shadow: var(--shadow-1);
 }
+
 
 button:disabled {
   opacity: 0.48;
@@ -141,7 +138,7 @@ select {
   padding: 11px 12px;
   outline: none;
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--ink) 8%, transparent);
-  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+  transition: border-color 120ms ease, background 120ms ease;
 }
 
 input:hover,
@@ -165,6 +162,7 @@ p {
 }
 
 h1 {
+  font-weight: 800;
   font-size: clamp(34px, 5vw, 62px);
   margin-bottom: 0;
   letter-spacing: -0.06em;
@@ -172,12 +170,14 @@ h1 {
 }
 
 h2 {
+  font-weight: 700;
   font-size: 22px;
   margin-bottom: 14px;
   letter-spacing: -0.025em;
 }
 
 h3 {
+  font-weight: 700;
   font-size: 16px;
   margin-bottom: 8px;
 }
@@ -214,7 +214,6 @@ pre {
   border: 1px solid var(--stroke);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-2);
-  backdrop-filter: blur(18px);
 }
 
 .topbar > div:first-child {
@@ -229,6 +228,7 @@ pre {
 }
 
 .tabs button {
+  font-weight: 500;
   text-align: left;
   display: grid;
   gap: 4px;
@@ -240,6 +240,7 @@ pre {
 }
 
 .tabs button.active {
+  font-weight: 700;
   background: color-mix(in srgb, var(--accent, var(--primary)) 18%, var(--surface-3));
 }
 
@@ -252,7 +253,7 @@ pre {
 
 .kicker {
   text-transform: uppercase;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 0.16em;
   margin-bottom: 6px;
 }
@@ -267,7 +268,7 @@ pre {
 .tier-select {
   min-width: 126px;
   height: 40px;
-  font-weight: 900;
+  font-weight: 500;
 }
 
 .layout {
@@ -284,7 +285,6 @@ pre {
   box-shadow: var(--shadow-2);
   padding: 18px;
   contain: layout paint style;
-  backdrop-filter: blur(18px);
 }
 
 .rail,
@@ -306,7 +306,7 @@ pre {
 .field span {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.12em;
 }
@@ -341,17 +341,17 @@ pre {
 }
 
 .tool-panel {
-  animation: tool-fade 180ms ease-out;
+  animation: tool-fade 120ms ease-out;
 }
 
 @keyframes tool-fade {
   from {
-    opacity: 0.72;
-    transform: translateY(8px) scale(0.995);
+    opacity: 0.85;
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
@@ -384,7 +384,7 @@ pre {
   padding: 8px 12px;
   background: var(--primary-soft);
   color: var(--accent-ink, var(--ink));
-  font-weight: 900;
+  font-weight: 500;
   border: 1px solid color-mix(in srgb, var(--accent, var(--primary)) 35%, var(--stroke));
 }
 
@@ -413,7 +413,7 @@ pre {
   width: 100%;
   height: 150px;
   object-fit: contain;
-  filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.25));
+  filter: none;
 }
 
 .team-member button {
@@ -474,7 +474,7 @@ pre {
   border: 1px solid rgba(0, 0, 0, 0.14);
   border-radius: 999px;
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 600;
   text-transform: uppercase;
 }
 
@@ -515,10 +515,11 @@ pre {
 .stat-bars span {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 500;
 }
 
 .stat-bars b {
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -527,7 +528,6 @@ pre {
   border-radius: 999px;
   background: linear-gradient(90deg, var(--accent, var(--primary)), var(--secondary));
   display: block;
-  box-shadow: 0 0 18px color-mix(in srgb, var(--accent, var(--primary)) 26%, transparent);
 }
 
 .type-matrix {
@@ -549,7 +549,7 @@ pre {
 .type-matrix span {
   text-transform: uppercase;
   color: var(--muted);
-  font-weight: 900;
+  font-weight: 500;
 }
 
 .type-matrix .weak {
@@ -595,7 +595,7 @@ pre {
   color: var(--muted);
   padding: 8px 11px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .pressure-grid {
@@ -623,6 +623,7 @@ pre {
 }
 
 .pressure-card strong {
+  font-weight: 700;
   font-size: 19px;
   line-height: 1;
 }
@@ -630,7 +631,7 @@ pre {
 .pressure-card small {
   color: var(--muted);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 500;
   text-transform: uppercase;
 }
 
@@ -743,6 +744,7 @@ pre {
 }
 
 .team-chip b {
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -781,7 +783,7 @@ pre {
   box-shadow: var(--shadow-3);
   z-index: 20;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .empty {
