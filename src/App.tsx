@@ -192,6 +192,34 @@ const PokemonCard = memo(function PokemonCard({
 )
 })
 
+const PatchSuggestionCard = memo(function PatchSuggestionCard({
+  entry,
+  score,
+  onAdd,
+}: {
+  entry: DerivedEntry
+  score: number
+  onAdd: () => void
+}) {
+  return (
+  <article className="patch-card">
+    <div className="patch-score">
+      <span>Patch</span>
+      <strong>{score.toFixed(1)}</strong>
+    </div>
+    <img src={entry.images.normal} alt={entry.displayName} loading="lazy" decoding="async" />
+    <div>
+      <p className="kicker">#{formatDex(entry.speciesId)} · {getTierLabel(entry)}</p>
+      <h3>{entry.displayName}</h3>
+      <div className="chip-row">{entry.types.map((type) => <TypeChip key={type} type={type} />)}</div>
+    </div>
+    <button type="button" onClick={onAdd} title={`Add ${entry.displayName}; score reflects how well it patches team weaknesses.`}>
+      Add
+    </button>
+  </article>
+)
+})
+
 function App() {
   const initial = useMemo(() => readInitialState(), [])
   const [index, setIndex] = useState<PokemonIndex | null>(null)
@@ -453,34 +481,40 @@ function App() {
                 <Swatches colors={teamPalette(team)} />
               </div>
 
-              <div className="panel">
-                <h2>Add selected Pokémon</h2>
-                {selectedEntry && (
-                  <PokemonCard
-                    entry={selectedEntry}
-                    mode={paletteMode}
-                    action={<button type="button" onClick={() => addToTeam(selectedEntry.name)} title={`Add ${selectedEntry.displayName} to the current team.`}>Add to team</button>}
-                  />
-                )}
-                <h2>Average stats</h2>
-                <StatBars stats={stats} />
+              <div className="panel selected-team-panel span-2">
+                <div className="selected-team-layout">
+                  <div>
+                    <h2>Add selected Pokémon</h2>
+                    {selectedEntry && (
+                      <PokemonCard
+                        entry={selectedEntry}
+                        mode={paletteMode}
+                        action={<button type="button" onClick={() => addToTeam(selectedEntry.name)} title={`Add ${selectedEntry.displayName} to the current team.`}>Add to team</button>}
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <h2>Average stats</h2>
+                    <StatBars stats={stats} />
+                  </div>
+                </div>
               </div>
 
               <CoveragePanel defense={defense} offense={offense} />
 
-              <div className="panel">
+              <div className="panel patch-panel span-2">
                 <h2>Patch suggestions</h2>
-                <div className="mini-grid">
+                <div className="patch-carousel" aria-label="Patch suggestions">
                   {suggestions.length === 0 ? (
                     <p className="empty compact">
                       Add team members first; suggestions appear when PokéStudio finds shared pressure points.
                     </p>
                   ) : suggestions.map(({ entry, score }) => (
-                    <PokemonCard
+                    <PatchSuggestionCard
                       key={entry.name}
                       entry={entry}
-                      mode="normal"
-                      action={<button type="button" onClick={() => addToTeam(entry.name)} title={`Add ${entry.displayName}; score reflects how well it patches team weaknesses.`}>Add · {score.toFixed(1)}</button>}
+                      score={score}
+                      onAdd={() => addToTeam(entry.name)}
                     />
                   ))}
                 </div>
@@ -490,7 +524,7 @@ function App() {
 
           {tab === 'palette' && (
             <div className="tool-grid tool-panel">
-              <div className="panel">
+              <div className="panel control-panel span-2">
                 <p className="kicker">Palette Matcher</p>
                 <h2>Find Pokémon for a color system</h2>
                 <div className="hex-grid">
@@ -529,7 +563,7 @@ function App() {
 
           {tab === 'shiny' && (
             <div className="tool-grid tool-panel">
-              <div className="panel">
+              <div className="panel control-panel span-2">
                 <p className="kicker">Shiny Delta</p>
                 <h2>Rank color shifts</h2>
                 <select value={shinyDirection} onChange={(event) => setShinyDirection(event.target.value as 'most' | 'least')} title="Choose whether to rank dramatic or subtle shiny palette changes.">
