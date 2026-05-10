@@ -460,7 +460,10 @@ function App() {
                   </div>
                   <span>{team.length}/{MAX_TEAM_SIZE}</span>
                 </div>
-                <div className="team-strip">
+                <div
+                  className="team-strip"
+                  style={{ '--team-count': Math.max(team.length, 1) } as React.CSSProperties}
+                >
                   {team.map(({ entry, mode }) => (
                     <article key={entry.name} className="team-member">
                       <button
