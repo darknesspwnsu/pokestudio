@@ -391,7 +391,7 @@ pre {
 
 .team-strip {
   display: grid;
-  grid-template-columns: repeat(var(--team-count, 1), minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
   min-height: 214px;
 }
@@ -410,6 +410,23 @@ pre {
   contain: layout paint;
 }
 
+.team-member.locked {
+  border-color: color-mix(in srgb, var(--accent, var(--primary)) 55%, var(--stroke));
+  background: color-mix(in srgb, var(--accent, var(--primary)) 13%, var(--surface-3));
+}
+
+.team-member.ghost {
+  border-style: dashed;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--surface-3) 36%, transparent);
+}
+
+.team-member-actions {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 6px;
+}
+
 .team-member img {
   width: 100%;
   height: 150px;
@@ -423,11 +440,51 @@ pre {
   font-size: 11px;
 }
 
+.team-member .icon-button {
+  display: grid;
+  place-items: center;
+  min-height: 30px;
+  padding: 0;
+}
+
+.icon-button svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .team-member h3 {
   min-height: 38px;
   overflow-wrap: normal;
   word-break: normal;
   line-height: 1.1;
+}
+
+.slot-number {
+  display: inline-flex;
+  justify-content: center;
+  min-height: 30px;
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.ghost-art {
+  width: 100%;
+  height: 150px;
+  border: 1px dashed color-mix(in srgb, var(--muted) 45%, transparent);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(135deg, transparent 0 46%, color-mix(in srgb, var(--muted) 18%, transparent) 47% 53%, transparent 54%),
+    color-mix(in srgb, var(--surface-3) 45%, transparent);
 }
 
 .selected-team-layout {

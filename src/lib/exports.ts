@@ -41,4 +41,8 @@ export const toCssVariables = (entry: DerivedEntry, mode: 'normal' | 'shiny') =>
   ].join('\n')
 
 export const toShareableTeam = (slots: TeamSlot[]) =>
-  slots.map((slot, index) => `${index + 1}. ${slot.name} (${slot.mode})`).join('\n')
+  slots
+    .map((slot, index) =>
+      `${index + 1}. ${slot.name ?? 'Empty'} (${slot.name ? slot.mode : 'open'}${slot.locked ? ', locked' : ''})`,
+    )
+    .join('\n')

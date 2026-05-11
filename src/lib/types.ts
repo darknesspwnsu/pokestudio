@@ -61,8 +61,9 @@ export type PokemonIndex = {
 export type StudioTab = 'team' | 'palette' | 'shiny' | 'types' | 'stats'
 
 export type TeamSlot = {
-  name: string
+  name?: string
   mode: PaletteMode
+  locked?: boolean
 }
 
 export type DerivedEntry = PokemonEntry & {

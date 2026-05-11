@@ -40,6 +40,8 @@ describe('team helpers', () => {
     const slots: TeamSlot[] = [
       { name: 'pikachu', mode: 'normal' },
       { name: 'gengar', mode: 'shiny' },
+      { mode: 'normal' },
+      { name: 'charizard', mode: 'normal', locked: true },
     ]
     expect(decodeTeam(encodeTeam(slots))).toEqual(slots)
   })

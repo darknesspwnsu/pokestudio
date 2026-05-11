@@ -64,6 +64,15 @@ const SIDEBAR_RESULT_LIMIT = 14
 const PALETTE_MATCH_LIMIT = 12
 const SHINY_ROW_LIMIT = 18
 const STAT_ROW_LIMIT = 14
+const TEAM_SLOT_INDEXES = Array.from({ length: MAX_TEAM_SIZE }, (_, index) => index)
+
+const normalizeTeamSlots = (slots: TeamSlot[]): TeamSlot[] =>
+  TEAM_SLOT_INDEXES.map((index) => {
+    const slot = slots[index]
+    return slot?.name
+      ? { name: slot.name, mode: slot.mode, locked: Boolean(slot.locked) }
+      : { mode: slot?.mode ?? 'normal' }
+  })
 
 const readInitialState = () => {
   if (typeof window === 'undefined') {
@@ -220,6 +229,13 @@ const PatchSuggestionCard = memo(function PatchSuggestionCard({
 )
 })
 
+const LockIcon = ({ locked }: { locked: boolean }) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <rect x="5" y="10" width="14" height="10" rx="2" />
+    <path d={locked ? 'M8 10V7a4 4 0 0 1 8 0v3' : 'M8 10V7a4 4 0 0 1 7.2-2.4'} />
+  </svg>
+)
+
 function App() {
   const initial = useMemo(() => readInitialState(), [])
   const [index, setIndex] = useState<PokemonIndex | null>(null)
@@ -228,7 +244,7 @@ function App() {
   const [tab, setTab] = useState<StudioTab>(initial.tab)
   const [paletteMode, setPaletteMode] = useState<PaletteMode>(initial.paletteMode)
   const [query, setQuery] = useState('')
-  const [teamSlots, setTeamSlots] = useState<TeamSlot[]>(initial.team)
+  const [teamSlots, setTeamSlots] = useState<TeamSlot[]>(() => normalizeTeamSlots(initial.team))
   const [selectedName, setSelectedName] = useState(initial.selected)
   const [hexValues, setHexValues] = useState(initial.hexes)
   const [shinyDirection, setShinyDirection] = useState<'most' | 'least'>('most')
@@ -295,11 +311,29 @@ function App() {
 
   const addToTeam = (name: string, mode = paletteMode) => {
     if (teamSlots.some((slot) => slot.name === name)) return
-    setTeamSlots((slots) => [...slots, { name, mode }].slice(0, MAX_TEAM_SIZE))
+    setTeamSlots((slots) => {
+      const next = normalizeTeamSlots(slots)
+      const emptyIndex = next.findIndex((slot) => !slot.name)
+      if (emptyIndex === -1) return next
+      next[emptyIndex] = { name, mode }
+      return next
+    })
   }
 
   const removeFromTeam = (name: string) => {
-    setTeamSlots((slots) => slots.filter((slot) => slot.name !== name))
+    setTeamSlots((slots) =>
+      normalizeTeamSlots(slots).map((slot) =>
+        slot.name === name ? { mode: slot.mode } : slot,
+      ),
+    )
+  }
+
+  const toggleSlotLock = (slotIndex: number) => {
+    setTeamSlots((slots) =>
+      normalizeTeamSlots(slots).map((slot, index) =>
+        index === slotIndex && slot.name ? { ...slot, locked: !slot.locked } : slot,
+      ),
+    )
   }
 
   const exportPoster = async () => {
@@ -318,14 +352,27 @@ function App() {
 
   const randomizeTeam = () => {
     const pool = filterRandomPool(defaultEntries, randomPool)
-    const source = pool.length >= MAX_TEAM_SIZE ? pool : defaultEntries
-    const shuffled = [...source].sort(() => Math.random() - 0.5)
-    setTeamSlots(
-      shuffled.slice(0, MAX_TEAM_SIZE).map((entry) => ({
-        name: entry.name,
-        mode: Math.random() > 0.88 ? 'shiny' : 'normal',
-      })),
-    )
+    const source = pool.length > 0 ? pool : defaultEntries
+    setTeamSlots((slots) => {
+      const normalized = normalizeTeamSlots(slots)
+      const lockedNames = new Set(
+        normalized
+          .filter((slot) => slot.locked && slot.name)
+          .map((slot) => slot.name),
+      )
+      const shuffled = source
+        .filter((entry) => !lockedNames.has(entry.name))
+        .sort(() => Math.random() - 0.5)
+      let nextEntryIndex = 0
+      return normalized.map((slot) => {
+        if (slot.locked && slot.name) return slot
+        const entry = shuffled[nextEntryIndex]
+        nextEntryIndex += 1
+        return entry
+          ? { name: entry.name, mode: Math.random() > 0.88 ? 'shiny' : 'normal' }
+          : { mode: 'normal' as const }
+      })
+    })
     startTransition(() => setTab('team'))
   }
 
@@ -462,24 +509,43 @@ function App() {
                 </div>
                 <div
                   className="team-strip"
-                  style={{ '--team-count': Math.max(team.length, 1) } as React.CSSProperties}
                 >
-                  {team.map(({ entry, mode }) => (
-                    <article key={entry.name} className="team-member">
-                      <button
-                        type="button"
-                        className="no-export"
-                        onClick={() => removeFromTeam(entry.name)}
-                        title={`Remove ${entry.displayName} from this team.`}
-                      >
-                        Remove
-                      </button>
-                      <img src={entry.images[mode]} alt={entry.displayName} loading="eager" decoding="async" />
-                      <h3>{entry.displayName}</h3>
-                      <div className="chip-row">{entry.types.map((type) => <TypeChip key={type} type={type} />)}</div>
-                    </article>
-                  ))}
-                  {team.length === 0 && <p className="empty">Add Pokémon from search or suggestions.</p>}
+                  {TEAM_SLOT_INDEXES.map((slotIndex) => {
+                    const slot = teamSlots[slotIndex]
+                    const entry = slot?.name ? entryMap.get(slot.name) : undefined
+                    return entry ? (
+                      <article key={`${slotIndex}-${entry.name}`} className={slot.locked ? 'team-member locked' : 'team-member'}>
+                        <div className="team-member-actions no-export">
+                          <button
+                            type="button"
+                            className="icon-button"
+                            onClick={() => toggleSlotLock(slotIndex)}
+                            aria-label={`${slot.locked ? 'Unlock' : 'Lock'} slot ${slotIndex + 1}`}
+                            title={`${slot.locked ? 'Unlock' : 'Lock'} this slot while randomizing.`}
+                          >
+                            <LockIcon locked={Boolean(slot.locked)} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeFromTeam(entry.name)}
+                            title={`Remove ${entry.displayName} from this team.`}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <img src={entry.images[slot.mode]} alt={entry.displayName} loading="eager" decoding="async" />
+                        <h3>{entry.displayName}</h3>
+                        <div className="chip-row">{entry.types.map((type) => <TypeChip key={type} type={type} />)}</div>
+                      </article>
+                    ) : (
+                      <article key={`empty-${slotIndex}`} className="team-member ghost">
+                        <span className="slot-number">Slot {slotIndex + 1}</span>
+                        <div className="ghost-art" aria-hidden="true" />
+                        <h3>Open slot</h3>
+                        <p className="microcopy">Randomize or add selected.</p>
+                      </article>
+                    )
+                  })}
                 </div>
                 <Swatches colors={teamPalette(team)} />
               </div>

@@ -8,6 +8,7 @@ export const resolveTeam = (slots: TeamSlot[], entries: DerivedEntry[]) => {
   const map = new Map(entries.map((entry) => [entry.name, entry]))
   return slots
     .map((slot) => {
+      if (!slot.name) return null
       const entry = map.get(slot.name)
       return entry ? { entry, mode: slot.mode } : null
     })
@@ -90,8 +91,19 @@ export const suggestTeamPatches = (team: ReturnType<typeof resolveTeam>, entries
     .slice(0, 8)
 }
 
-export const encodeTeam = (slots: TeamSlot[]) =>
-  slots.map((slot) => `${slot.name}${slot.mode === 'shiny' ? ':s' : ''}`).join(',')
+export const encodeTeam = (slots: TeamSlot[]) => {
+  const tokens = slots.slice(0, MAX_TEAM_SIZE).map((slot) => {
+    const flags = [slot.mode === 'shiny' ? 's' : '', slot.locked && slot.name ? 'l' : '']
+      .filter(Boolean)
+      .join('')
+    const base = slot.name ?? '_'
+    return flags ? `${base}:${flags}` : base
+  })
+  while (tokens.length > 0 && tokens[tokens.length - 1] === '_') {
+    tokens.pop()
+  }
+  return tokens.join(',')
+}
 
 export const decodeTeam = (value: string | null): TeamSlot[] =>
   (value ?? '')
@@ -100,6 +112,13 @@ export const decodeTeam = (value: string | null): TeamSlot[] =>
     .filter(Boolean)
     .slice(0, MAX_TEAM_SIZE)
     .map((token) => {
-      const [name, mode] = token.split(':')
-      return { name, mode: mode === 's' ? 'shiny' : 'normal' }
+      const [name, flags = ''] = token.split(':')
+      const slot: TeamSlot = {
+        name: name === '_' ? undefined : name,
+        mode: flags.includes('s') ? 'shiny' : 'normal',
+      }
+      if (flags.includes('l') && name !== '_') {
+        slot.locked = true
+      }
+      return slot
     })
